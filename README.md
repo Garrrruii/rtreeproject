@@ -28,5 +28,5 @@ PLAN:
 * When I'm possible: visualization using python or else
   (=> maybe helpful to understand Rtree mechanism)
 * Add deletion...?
-* Add other queries? ex) window
+* Add other queries? ex) window, rnn
 * Else, working on the project personally (Regardless of THIS project)
