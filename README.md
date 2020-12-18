@@ -1,4 +1,4 @@
-# rtreeproject
+# Rtree build and query processing
 2D-R-tree code
   
 2020-11-13
