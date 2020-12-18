@@ -8,13 +8,13 @@
 NOW:
 * Point with integer coordinates for object, 2D-rectangel(mbr) for node
 * INSERT:
-  insert obj to node where need 1)smallest enlarged area 2)smallest area
+  insert obj to node with 1)smallest enlarged area 2)smallest area
 * DELETE: 
   NO DELETION. b/c we don't need for this project
 * SPLIT:
   * divide node in half and half
-  * pick two seeds by choosing two nodes that makes the largest wasted space
-  * distribute child by choose what and where to insert with 1)smallest enlarged area 2)smallest area
+  * pick two seeds by choosing two nodes making largest wasted space
+  * distribute child by choosing what and where to insert with 1)smallest enlarged area 2)smallest area
 * QUERYS:
   range, knn
 * COUNT IO:
