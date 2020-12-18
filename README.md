@@ -1,9 +1,9 @@
 # rtreeproject
 2D-R-tree code
   
-2020-11-13
-2D-Rtree of point object for Blockchain
-count logical IO of tree-building and range/knn query processing
+2020-11-13 | 
+2D-Rtree of point object for Blockchain | 
+count logical IO of tree-building and range/knn query processing | 
 
 NOW:
 * Point with integer coordinates for object, 2D-rectangel(mbr) for node
@@ -19,7 +19,7 @@ NOW:
   range, knn
 * COUNT IO:
   ONLY for this project. Count it logically. Assume that
-  1) We have nodes in DISK from level3~objects i.e. ONLY root~level2 nodes are in MEMORY
+  1) We have nodes in DISK from lv3 i.e. ONLY root~lv2 nodes are in MEMORY
   2) Parent node can see children's coord info
     
 PLAN:
