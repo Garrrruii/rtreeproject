@@ -1,9 +1,9 @@
 # rtreeproject
 2D-R-tree code
   
-2020-11-13 | 
-2D-Rtree of point object for Blockchain | 
-count logical IO of tree-building and range/knn query processing | 
+2020-11-13
+* 2D-Rtree of point object for Blockchain
+* count logical IO of tree-building and range/knn query processing
 
 NOW:
 * Point with integer coordinates for object, 2D-rectangel(mbr) for node
@@ -12,9 +12,9 @@ NOW:
 * DELETE: 
   NO DELETION. b/c we don't need for this project
 * SPLIT:
-  divide node in half and half
-  pick two seeds by choosing two nodes that makes the largest wasted space
-  distribute child by choose what and where to insert with 1)smallest enlarged area 2)smallest area
+  * divide node in half and half
+  * pick two seeds by choosing two nodes that makes the largest wasted space
+  * distribute child by choose what and where to insert with 1)smallest enlarged area 2)smallest area
 * QUERYS:
   range, knn
 * COUNT IO:
