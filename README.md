@@ -29,4 +29,4 @@ PLAN:
   (=> maybe helpful to understand Rtree mechanism)
 * Add deletion...?
 * Add other queries? ex) window
-* Working on the project personally (Regardless of THIS project)
+* Else, working on the project personally (Regardless of THIS project)
