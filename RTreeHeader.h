@@ -11,9 +11,14 @@ using namespace std;
 int MAXINF = 123456789;
 int MININF = -123456789;
 
-int MAXNN = 169, MINNN = 84; //169 84 41
+/* SETTINGS
+* MAXNN: Maximal Node Number
+* MINNN: Minimal Node Number
+* LV: memory상에 존재하는 level
+*/
+int MAXNN = 169, MINNN =84; //row41참고
 int LV = 2;
-//        R					 //128MB 16MB 2MB
+//        R
 //       . .		(R.lv-N.lv)=1  
 //     . . . .		(R.lv-N.lv)=2
 // . . . . . . . 	(R.lv-N.lv)=3
@@ -33,7 +38,7 @@ struct Node {
 	bool isLeaf, isRoot;	//bool*2		=2
 	vector<Node*> child;	//(ptr+int*4)*M =24M
 	Node* parent;			//ptr*1			=8
-							//30+24M < node => M < ?
+							//30+24M < node size(=page size) => M<169.xx => MAXNN=169, MINNN=84
 };
 vector<Node*> nullvec(0);
 Node InitNode = { InitRec,-1,false,false,nullvec,nullptr };
@@ -55,39 +60,38 @@ public:
 	}
 	~RTree() {}
 
-	// Rtree build
-	void InsertObjTree(int, int);
-	void InsertObjNode(Node*, Node*);
-	void InsertObjLeaf(Node*, Node*);
-	void InsertNode(Node*, Node*);
-	Node* ChooseNode(Node*, Node*);
-	void SetNewRoot(Node*, Node*);
+	void InsertObjTree(int, int);			//insert object to tree
+	void InsertObjNode(Node*, Node*);		//insert obejct to node
+	void InsertObjLeaf(Node*, Node*);		//insert obejct to leaf
+	void InsertNode(Node*, Node*);			//insert node to node
+	Node* ChooseNode(Node*, Node*);			//choose node to insert
+	void SetNewRoot(Node*, Node*);			//set new root
 
-	void SplitAdjust(Node*);
-	void ResizeMbr(Node*);
-	void ResizeMbr2(Node*, Rec);
-
-	int GetArea(Node*);
-	int AreaBtw(Node*, Node*);
-	int DistBtw(Node*, Node*);
-	int Dist(Node*, Point*);
-	int MinDist(Node*, Point*);
-	int MaxDist(Node*, Point*);
-
+	void SplitAdjust(Node*);				//split functions
 	void SplitInto(Node*, Node*);
 	void Split(Node*, Node*, vector<Node*>);
 
-	// Debug
-	void PrintTree();
-	void PrintNode(Node*);
-	ll GetCNT();
-	ll NodeInDisk();
+	void ResizeMbr(Node*);					//resize mbr
+	void ResizeMbr2(Node*, Rec);
 
-	// Rtree query
-	vector<Point> range(int, Point, ll*);
-	vector<Point> KNN(int, Point, ll*);
-	
-	// Sort
+	int GetArea(Node*);						//Area
+	int AreaBtw(Node*, Node*);				//Area(AUB)-Area(A)-Area(B)	
+	int MinDist(Node*, Point*);
+	int MaxDist(Node*, Point*);
+	int MinMaxDist(Node*, Point*);
+
+
+	void PrintTree();						// print tree
+	void PrintNode(Node*);					// print subtree of which root=Node
+	ll GetCNT();
+	ll GetNodeInDisk();
+
+	//vector<Point> range(int, Point, ll*);	// result return
+	void range(int, Point, ll*);
+	//vector<Point> KNN(int, Point, ll*);	// result return
+	void KNN(int, Point, ll*);
+
+	//sort
 	struct sortpoints {
 		bool operator()(Node* A, Node* B) {
 			if (A->mbr.y1 == B->mbr.y1) return A->mbr.x1 < B->mbr.x1;
@@ -113,6 +117,7 @@ public:
 	};
 	struct nearfirst {
 		bool operator()(pair<int, Node> A, pair<int, Node> B) {
+			if (A.first == B.first) return A.second.level > B.second.level;
 			return A.first > B.first;
 		}
 	};
@@ -123,7 +128,8 @@ public:
 	};
 };
 
-/// RTree Build
+/// RTree functions
+///
 void RTree::InsertObjTree(int x, int y) {
 
 	Node* PointNode = new Node();
@@ -134,12 +140,11 @@ void RTree::InsertObjTree(int x, int y) {
 	PointNode->child = nullvec;
 	PointNode->parent = nullptr;
 	InsertObjNode(Root, PointNode);
+	
+	//IOCOUNT 데이터 한 개 블록체인에 넣을 때
+	//CNT++;
 }
 void RTree::InsertObjNode(Node* N, Node* InputObj) {
-	// Insert InputObj into subtree of root N
-	// if N=leaf, insert
-	// else     , choose node to insert InputObj and then insert
-
 	ResizeMbr2(N, InputObj->mbr);
 
 	if (N->isLeaf) InsertObjLeaf(N, InputObj);
@@ -149,10 +154,7 @@ void RTree::InsertObjNode(Node* N, Node* InputObj) {
 	}
 }
 void RTree::InsertObjLeaf(Node* N, Node* InputObj) {
-	// Insert object InputObj into a leafnode N
-	// Update node info of InputObj and N
-
-	//IOCOUNT we updated node N
+	//IOCOUNT 내 정보가 바뀔 때
 	if (Root->level - N->level > LV) CNT++; 
 
 	InputObj->level = -1;
@@ -165,9 +167,6 @@ void RTree::InsertObjLeaf(Node* N, Node* InputObj) {
 	else ResizeMbr(N);
 }
 void RTree::InsertNode(Node* Par, Node* NewNode) {
-	// Insert node NewNode into a node Parent
-	// Update node info of NewNode and Par
-
 	NewNode->level = Par->level - 1;
 	NewNode->isLeaf = (NewNode->level == 0);
 	NewNode->isRoot = false;
@@ -177,12 +176,7 @@ void RTree::InsertNode(Node* Par, Node* NewNode) {
 	if (Par->child.size() > MAXNN) SplitAdjust(Par);
 }
 Node* RTree::ChooseNode(Node* N, Node* InputObj) {
-	// Choose list of node NodeList to input InputObj among N->child
-	//
-	// STEP 1. Choose nodes whose extended mbr area is minimal
-	// STEP 2. Pick a node whose mbr area is minimal
-
-	// STEP 1
+	
 	vector<Node*> NodeList;
 	int MinArea = AreaBtw(N->child[0], InputObj);
 	NodeList.push_back(N->child[0]);
@@ -195,7 +189,6 @@ Node* RTree::ChooseNode(Node* N, Node* InputObj) {
 		NodeList.push_back(N->child[i]);
 	}
 
-	// STEP 2
 	Node* NewN = NodeList[0];
 	MinArea = GetArea(NewN);
 	for (int i = 0; i < NodeList.size(); i++) {
@@ -208,27 +201,21 @@ void RTree::SplitAdjust(Node* N) {
 	Node* NewNode = new Node;
 	SplitInto(N, NewNode);
 
-	//IOCOUNT we added new node
+	//IOCOUNT 새 노드 씀
 	if (Root->level - N->level > LV) CNT++;
 
 	if (N->isRoot) SetNewRoot(N, NewNode);
 	else InsertNode(N->parent, NewNode);
 }
 void RTree::SplitInto(Node* N, Node* NewNode) {
-	// Split N into N and NewNode
-	// 
-	// STEP 1. Copy N->child to Allchild and empty N->child
-	// STEP 2. Pick two seeds of index ai and bi
-	// STEP 3. Then divde Allchild into N and NewNode
 
-	// STEP 1
 	vector<Node*> Allchild = N->child;
 	N->child.clear();
 
 	if (N->isLeaf) sort(Allchild.begin(), Allchild.end(), sortpoints());
 	else sort(Allchild.begin(), Allchild.end(), sortmbrs());
 
-	// STEP 2
+	// STEP 1. Pick Seeds
 	int MaxArea = AreaBtw(Allchild[0], Allchild.back());
 	int ai = 0, bi = (int)Allchild.size() - 1;
 	N->child.push_back(Allchild[ai]);
@@ -250,21 +237,12 @@ void RTree::SplitInto(Node* N, Node* NewNode) {
 	Allchild.erase(Allchild.begin() + ai);
 	ResizeMbr(N); ResizeMbr(NewNode);
 
-	// STEP 3
+	// STEP 2. Split
 	Split(N, NewNode, Allchild);
 }
 void RTree::Split(Node* N, Node* NewNode, vector<Node*> Allchild) {
-	// Divide Allchild into N and NewNode
-	// We have N->child[0] and NewNode->child[0] already
-	//
-	// STEP 1. Choose child to insert to N or NewNode, whose Extended Area is minimal
-	//         Repeat while N or NewNode has less than N/2 children
-	// STEP 2. Insert all left children to N or NewNode
-	//
-	// We use addtoN to know where to insert
 	bool addtoN;
 
-	// STEP 1
 	while (!Allchild.empty()) {
 		if (N->child.size() > MINNN) { addtoN = false; break; }
 		if (NewNode->child.size() > MINNN) { addtoN = true; break; }
@@ -293,7 +271,6 @@ void RTree::Split(Node* N, Node* NewNode, vector<Node*> Allchild) {
 		Allchild.erase(Allchild.begin() + ti);
 	}
 
-	// STEP 2
 	if (!Allchild.empty()) {
 		if (addtoN) {
 			for (int i = 0; i < Allchild.size(); i++) {
@@ -307,10 +284,7 @@ void RTree::Split(Node* N, Node* NewNode, vector<Node*> Allchild) {
 		}
 	}
 }
-void RTree::SetNewRoot(Node* A, Node* B) {
-	// Set new root NewRoot
-	// with children A(the original root) and B(new node created by spliting A)
-	
+void RTree::SetNewRoot(Node* A, Node* B) { // Change Root A to NewRoot whose children are A and B
 	Node* NewRoot = new Node;
 
 	B->level = A->level;
@@ -325,7 +299,7 @@ void RTree::SetNewRoot(Node* A, Node* B) {
 	NewRoot->isRoot = true;
 	Root = NewRoot;
 
-	// IO COUNT
+	//IOCOUNT
 	queue<Node*> Q;
 	Q.push(A); Q.push(B);
 	while (!Q.empty()) {
@@ -340,10 +314,7 @@ void RTree::SetNewRoot(Node* A, Node* B) {
 	}
 	//printf("level down,\tCNT=%d\n", CNT); //IOCOUNT
 }
-void RTree::ResizeMbr(Node* N) {
-	// Resize mbr of N
-	// since Newmbr inserted in N
-
+void RTree::ResizeMbr(Node* N) {	//Since new child inserted, resize mbr
 	Rec Newmbr = N->child.back()->mbr;
 	if (N->child.size() == 1) {
 		N->mbr.x1 = Newmbr.x1;
@@ -359,9 +330,6 @@ void RTree::ResizeMbr(Node* N) {
 	}
 }
 void RTree::ResizeMbr2(Node* N, Rec R) {
-	// Resize mbr of N
-	// since R inserted in subtree of root N
-
 	N->mbr.x1 = min(N->mbr.x1, R.x1);
 	N->mbr.y1 = min(N->mbr.y1, R.y1);
 	N->mbr.x2 = max(N->mbr.x2, R.x2);
@@ -371,22 +339,13 @@ int RTree::GetArea(Node* N) {
 	int dx = N->mbr.x2 - N->mbr.x1;
 	int dy = N->mbr.y2 - N->mbr.y1;
 
-	return dy * dy;
+	return dx * dy;
 }
 int RTree::AreaBtw(Node* A, Node* B) {
 	int dx = max(A->mbr.x2, B->mbr.x2) - min(A->mbr.x1, B->mbr.x1);
 	int dy = max(A->mbr.y2, B->mbr.y2) - min(A->mbr.y1, B->mbr.y1);
 
 	return dx * dy - GetArea(A) - GetArea(B);
-}
-int RTree::DistBtw(Node* A, Node* B) {
-	int dx = A->mbr.x1 - B->mbr.x1;
-	int dy = A->mbr.y1 - B->mbr.y1;
-	return dx * dx + dy * dy;
-}
-int RTree::Dist(Node* A, Point* P) {
-	int dx1 = P->x - A->mbr.x1; int dy1 = P->y - A->mbr.y1;
-	return dx1 * dx1 + dy1 * dy1;
 }
 int RTree::MinDist(Node* A, Point* P) {
 	int dx1 = P->x - A->mbr.x1; int dy1 = P->y - A->mbr.y1;
@@ -405,12 +364,20 @@ int RTree::MaxDist(Node* A, Point* P) {
 
 	return max(dx1 * dx1, dx2 * dx2) + max(dy1 * dy1, dy2 * dy2);
 }
+int RTree::MinMaxDist(Node* A, Point* P) {
+	int dx1 = P->x - A->mbr.x1; int dy1 = P->y - A->mbr.y1;
+	int dx2 = P->x - A->mbr.x2; int dy2 = P->y - A->mbr.y2;
 
-/// Debug
+	int dist1 = min(dx1 * dx1, dx2 * dx2) + max(dy1 * dy1, dy2 * dy2);
+	int dist2 = max(dx1 * dx1, dx2 * dx2) + min(dy1 * dy1, dy2 * dy2);
+	return min(dist1, dist2);
+}
 void RTree::PrintTree() {
 	PrintNode(Root);
+	printf("\n");
 }
 void RTree::PrintNode(Node* N) {
+	// 트리 전체 출력
 	/*
 	for (int i = 0; i < 4 - (N->level); i++) printf("  ");
 	printf("%2d...", (Root->level) - (N->level));
@@ -424,6 +391,7 @@ void RTree::PrintNode(Node* N) {
 		for (int i = 0; i < N->child.size(); i++) printf("(%5d,%5d) ", N->child[i]->mbr.x1, N->child[i]->mbr.y1);
 	}*/
 	
+	// 트리 일부 출력
 	for (int i = 0; i < 4 - (N->level); i++) printf("  ");
 	printf("%2d...", (Root->level) - (N->level));
 	printf("(%4d,%4d | %4d,%4d) ", N->mbr.x1, N->mbr.x2, N->mbr.y1, N->mbr.y2);
@@ -439,9 +407,7 @@ void RTree::PrintNode(Node* N) {
 ll RTree::GetCNT() {
 	return CNT;
 }
-ll RTree::NodeInDisk() {
-	// Return the number of Node in disk
-
+ll RTree::GetNodeInDisk() {
 	ll CNT = 0;
 	queue<Node> Q;
 	Q.push(*Root);
@@ -458,8 +424,8 @@ ll RTree::NodeInDisk() {
 	return CNT;
 }
 
-/// Rtree Query
-vector<Point> RTree::range(int R, Point P, ll* CNT) {
+//vector<Point> RTree::range(int R, Point P, ll* CNT) {
+void RTree::range(int R, Point P, ll * CNT) {
 	vector<Point> V;
 	queue<Node> Q;
 
@@ -471,7 +437,7 @@ vector<Point> RTree::range(int R, Point P, ll* CNT) {
 		if (Root->level - Cur.level > LV) (*CNT)++;
 		if (Cur.isLeaf) {
 			for (int i = 0; i < (int)Cur.child.size(); i++) {
-				if (Dist(Cur.child[i], &P) <= R * R) V.push_back({ Cur.child[i]->mbr.x1,Cur.child[i]->mbr.y1 });
+				if (MinDist(Cur.child[i], &P) <= R * R) V.push_back({ Cur.child[i]->mbr.x1,Cur.child[i]->mbr.y1 });
 			}
 		}
 		else {
@@ -480,13 +446,14 @@ vector<Point> RTree::range(int R, Point P, ll* CNT) {
 			}
 		}
 	}
-	return V;
+	//return V;
 }
-vector<Point> RTree::KNN(int K, Point P, ll* CNT) {
+//vector<Point> RTree::KNN(int K, Point P, ll* CNT) {
+void RTree::KNN(int K, Point P, ll* CNT) {
 	priority_queue<pair<int, Node>, vector<pair<int, Node>>, nearfirst> QN;
 	priority_queue<pair<int, Node>, vector<pair<int, Node>>, farfirst> QF;
 	vector<Point> V;
-
+	
 	int R = MaxDist(Root, &P);
 	QN.push({ MinDist(Root,&P),*Root });
 
@@ -494,12 +461,12 @@ vector<Point> RTree::KNN(int K, Point P, ll* CNT) {
 		if (QN.top().first > R) break;
 
 		Node Cur = QN.top().second; QN.pop();
-		
+
 		//IO COUNT
 		if (Root->level - Cur.level > LV) (*CNT)++;
 		
 		if (Cur.isLeaf) {
-			for (int i = 0; i < (int)Cur.child.size(); i++) QF.push({ Dist(Cur.child[i], &P),*Cur.child[i] });
+			for (int i = 0; i < (int)Cur.child.size(); i++) QF.push({ MinDist(Cur.child[i], &P),*Cur.child[i] });
 
 			while (QF.size() > K) QF.pop();
 			if (QF.size() == K) R = QF.top().first;
@@ -511,6 +478,4 @@ vector<Point> RTree::KNN(int K, Point P, ll* CNT) {
 	while (!QF.empty()) {
 		V.push_back({ QF.top().second.mbr.x1,QF.top().second.mbr.y1 }); QF.pop();
 	}
-
-	return V;
 }
