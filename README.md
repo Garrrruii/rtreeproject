@@ -25,8 +25,8 @@ NOW:
 PLAN:
 * Change code using 'Class'
 * Change it to apply to rectangular objects or real number coordinates
-* When I'm possible: visualization using python or else
-  (=> maybe helpful to understand Rtree mechanism)
+* If it's possible: visualization using python or else
+  (something helpful to understand Rtree mechanism)
 * Add deletion...?
 * Add other queries? ex) window, rnn
 * Else, working on the project personally (Regardless of THIS project)
