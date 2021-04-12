@@ -2,15 +2,15 @@
 2D-R-tree code
   
 2020-11-13
-* 2D-Rtree of point object for Blockchain
-* count logical IO of tree-building and range/knn query processing
+* 2D-Rtree of point object for blockchain => no need deletion
+* count logical IO of tree-building and range/knn query processing => node access count
 
 NOW:
-* Point with integer coordinates for object, 2D-rectangel(mbr) for node
+* Point with integer coordinates for object, 2D-rectangle(mbr)---node
 * INSERT:
   insert obj to node with 1)smallest enlarged area 2)smallest area
 * DELETE: 
-  NO DELETION. b/c we don't need for this project
+  NO DELETION.
 * SPLIT:
   * divide node in half and half
   * pick two seeds by choosing two nodes making largest wasted space
